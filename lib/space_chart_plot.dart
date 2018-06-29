@@ -336,7 +336,10 @@ class SpacePlotWidget extends StatelessWidget {
 //      position: DecorationPosition.background,
 //      child:
 //    ),
-    return new SpaceChart(
+  return new ClipRect(
+    child:
+//    return
+      new SpaceChart(
         _getVisibleSeries(),
         animate: animate,
         behaviors: [
@@ -361,8 +364,19 @@ class SpacePlotWidget extends StatelessWidget {
               radiusPx: 3.0,
               stairLine: false,
               customRendererId: 'value'),
-        ]
-    );
+        ],
+
+        /// This is an OrdinalAxisSpec to match up with BarChart's default
+        /// ordinal domain axis (use NumericAxisSpec or DateTimeAxisSpec for
+        /// other charts).
+        domainAxis: new charts.NumericAxisSpec(
+          // Make sure that we draw the domain axis line.
+            showAxisLine: false,
+            // But don't draw anything else.
+            renderSpec: new charts.NoneRenderSpec()),
+
+      )
+  );
   }
 }
 
