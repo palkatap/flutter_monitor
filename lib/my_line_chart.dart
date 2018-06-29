@@ -6,8 +6,8 @@ import 'package:charts_common/common.dart' as common;
 import 'my_line_renderer.dart';
 
 
-class MyLineChart extends cartesian.CartesianChart<num> {
-  MyLineChart(
+class SpaceChart extends cartesian.CartesianChart<num> {
+  SpaceChart(
       List<common.Series> seriesList, {
         bool animate,
         Duration animationDuration,

@@ -58,3 +58,18 @@ const int LIMIT_RANGE_UAL = 36;
 /** length of the limit_enable string */
 const int LIMIT_SIZE = 37;
 
+const int CHART_TYPE_MV = 2;
+const int CHART_TYPE_SIGMA = 3;
+const int CHART_TYPE_RANGE = 4;
+const int CHART_TYPE_RAW = 5;
+const int CHART_TYPE_EWMA_MEAN = 6;
+const int CHART_TYPE_MA = 7;
+const int CHART_TYPE_MS = 8;
+const int CHART_TYPE_EWMA_S = 9;
+const int CHART_TYPE_EWMA_R = 10;
+const int CHART_TYPE_COMMON = -1;
+
+const int DISPLAY_RULE_NEVER = 0;
+const int DISPLAY_RULE_ALWAYS = 1;
+const int DISPLAY_RULE_VIOL_ONLY = 2;
+const int DISPLAY_RULE_ON_DEMAND = 3;
