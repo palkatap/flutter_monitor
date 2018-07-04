@@ -1,6 +1,15 @@
+import 'package:charts_common/src/chart/cartesian/axis/collision_report.dart';
+import 'package:charts_common/src/chart/layout/layout_view.dart';
 import 'package:flutter/material.dart';
+import 'dart:math';
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:charts_common/src/data/series.dart' show TypedAccessorFn;
+import 'package:charts_common/src/chart/cartesian/axis/draw_strategy/gridline_draw_strategy.dart';
+import 'package:charts_common/src/chart/cartesian/axis/draw_strategy/tick_draw_strategy.dart';
+import 'package:charts_common/src/common/graphics_factory.dart';
+import 'package:charts_common/src/chart/cartesian/axis/axis.dart';
+import 'package:charts_common/src/chart/cartesian/axis/tick.dart';
+import 'package:charts_common/src/chart/cartesian/axis/spec/axis_spec.dart';
 
 import 'my_line_chart.dart';
 import 'my_line_renderer.dart';
@@ -296,8 +305,8 @@ class SpacePlotWidget extends StatelessWidget {
     min ??= 0.0;
     max ??= 1.0;
     double range = max - min;
-    min -= range * 0.1;
-    max += range * 0.1;
+    min -= range * 0.05;
+    max += range * 0.05;
     return new charts.NumericExtents(min, max);
   }
 
@@ -330,13 +339,14 @@ class SpacePlotWidget extends StatelessWidget {
   Widget build(BuildContext context) {
 //    return new DecoratedBox(
 //      decoration: new BoxDecoration(
-//        color: Color(0xff0000ff),
+////        color: Color(0xff0000ff),
 //        border: Border.all(color: new Color(0x80ff0000), width: 5.0)
 //      ),
 //      position: DecorationPosition.background,
 //      child:
-//    ),
-  return new ClipRect(
+////    ),
+  return
+        new ClipRect(
     child:
 //    return
       new SpaceChart(
@@ -349,7 +359,7 @@ class SpacePlotWidget extends StatelessWidget {
         defaultInteractions: false,
         defaultRenderer: new MyLineRendererConfig(
           strokeWidthPx: 1.0,
-          includeLine: true,
+          includeLine: false,
           includePoints: false,
           stairLine: true,
         ),
@@ -372,14 +382,176 @@ class SpacePlotWidget extends StatelessWidget {
         domainAxis: new charts.NumericAxisSpec(
           // Make sure that we draw the domain axis line.
             showAxisLine: false,
-            // But don't draw anything else.
-            renderSpec: new charts.NoneRenderSpec()),
+//            renderSpec: new MyRendererSpec(),
+            renderSpec: new GridlineNoLabelRendererSpec(//charts.GridlineRendererSpec(
+              // Tick and Label styling here.
+//                labelStyle: new charts.TextStyleSpec(
+//                    fontSize: 18, // size in Pts.
+//                    color: charts.MaterialPalette.black),
 
+                // Change the line colors to match text color.
+                lineStyle: new charts.LineStyleSpec(
+                    color: charts.MaterialPalette.black)),
+//         But don't draw anything else.
+//            renderSpec: charts.NoneRenderSpec(
+        ),
+
+        layoutConfig: new charts.LayoutConfig(),
       )
   );
+//    );
   }
 }
 
+class MyRendererSpec<D> implements RenderSpec<D> {
+  @override
+  TickDrawStrategy<D> createDrawStrategy(charts.ChartContext context, GraphicsFactory graphicFactory) {
+  }
+}
+
+class MyTickDrawStrategy<D> extends TickDrawStrategy<D> {
+  @override
+  CollisionReport collides(List<Tick> ticks, AxisOrientation orientation) {
+    return new CollisionReport(ticksCollide: false, ticks: ticks, alternateTicksUsed: false);
+  }
+
+  @override
+  void decorateTicks(List<Tick> ticks) {
+    // empty
+  }
+
+  @override
+  void draw(charts.ChartCanvas canvas, Tick tick, {AxisOrientation orientation, Rectangle<int> axisBounds, Rectangle<int> drawAreaBounds}) {
+    LineStyleSpec lineStyle = new LineStyleSpec(color: charts.MaterialPalette.black.lighter, thickness: 1);
+    Point<num> lineStart;
+    Point<num> lineEnd;
+    final x = tick.locationPx;
+    lineStart = new Point(x, drawAreaBounds.bottom);
+    lineEnd = new Point(x, axisBounds.top);
+    canvas.drawLine(
+      points: [lineStart, lineEnd],
+      fill: lineStyle.color,
+      stroke: lineStyle.color,
+      strokeWidthPx: lineStyle.thickness.toDouble(),
+    );
+  }
+
+  @override
+  void drawAxisLine(charts.ChartCanvas canvas, AxisOrientation orientation, Rectangle<int> axisBounds) {
+    // empty
+  }
+
+  @override
+  ViewMeasuredSizes measureHorizontallyDrawnTicks(List<Tick> ticks, int maxWidth, int maxHeight) {
+    return new ViewMeasuredSizes(preferredWidth: 0, preferredHeight: 0);
+  }
+
+  @override
+  ViewMeasuredSizes measureVerticallyDrawnTicks(List<Tick> ticks, int maxWidth, int maxHeight) {
+    return new ViewMeasuredSizes(preferredWidth: 0, preferredHeight: 0);
+  }
+
+}
+@immutable
+class GridlineNoLabelRendererSpec<D> extends charts.SmallTickRendererSpec<D> {
+  GridlineNoLabelRendererSpec({
+    charts.TextStyleSpec labelStyle,
+    charts.LineStyleSpec lineStyle,
+    charts.LineStyleSpec axisLineStyle,
+    charts.TickLabelAnchor labelAnchor,
+    charts.TickLabelJustification labelJustification,
+    int tickLengthPx,
+    int labelOffsetFromAxisPx,
+    int labelOffsetFromTickPx,
+    int minimumPaddingBetweenLabelsPx,
+  }) : super(
+      labelStyle: labelStyle,
+      lineStyle: lineStyle,
+      labelAnchor: labelAnchor,
+      labelJustification: labelJustification,
+      labelOffsetFromAxisPx: labelOffsetFromAxisPx,
+      labelOffsetFromTickPx: labelOffsetFromTickPx,
+      minimumPaddingBetweenLabelsPx: minimumPaddingBetweenLabelsPx,
+      tickLengthPx: tickLengthPx,
+      axisLineStyle: axisLineStyle);
+
+  @override
+  TickDrawStrategy<D> createDrawStrategy(
+      charts.ChartContext chartContext, GraphicsFactory graphicsFactory) =>
+      new GridlineNoLabelTickDrawStrategy<D>(chartContext, graphicsFactory,
+          tickLengthPx: tickLengthPx,
+          lineStyleSpec: lineStyle,
+          labelStyleSpec: labelStyle,
+          axisLineStyleSpec: axisLineStyle,
+          labelAnchor: labelAnchor,
+          labelJustification: labelJustification,
+          labelOffsetFromAxisPx: labelOffsetFromAxisPx,
+          labelOffsetFromTickPx: labelOffsetFromTickPx,
+          minimumPaddingBetweenLabelsPx: minimumPaddingBetweenLabelsPx);
+
+  @override
+  ViewMeasuredSizes measureHorizontallyDrawnTicks(List<Tick> ticks, int maxWidth, int maxHeight) {
+    return new ViewMeasuredSizes(preferredWidth: 0, preferredHeight: 0);
+  }
+
+  @override
+  ViewMeasuredSizes measureVerticallyDrawnTicks(List<Tick> ticks, int maxWidth, int maxHeight) {
+    return new ViewMeasuredSizes(preferredWidth: 0, preferredHeight: 0);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is GridlineRendererSpec && super == (other);
+  }
+
+  @override
+  int get hashCode {
+    int hashcode = super.hashCode;
+    return hashcode;
+  }
+}
+
+
+class GridlineNoLabelTickDrawStrategy<D> extends GridlineTickDrawStrategy<D> {
+  GridlineNoLabelTickDrawStrategy(
+      charts.ChartContext chartContext,
+      GraphicsFactory graphicsFactory, {
+        int tickLengthPx,
+        charts.LineStyleSpec lineStyleSpec,
+        charts.TextStyleSpec labelStyleSpec,
+        charts.LineStyleSpec axisLineStyleSpec,
+        charts.TickLabelAnchor labelAnchor,
+        charts.TickLabelJustification labelJustification,
+        int labelOffsetFromAxisPx,
+        int labelOffsetFromTickPx,
+        int minimumPaddingBetweenLabelsPx,
+      }) : super(chartContext, graphicsFactory,
+      labelStyleSpec: labelStyleSpec,
+      axisLineStyleSpec: axisLineStyleSpec ?? lineStyleSpec,
+      labelAnchor: labelAnchor,
+      labelJustification: labelJustification,
+      labelOffsetFromAxisPx: labelOffsetFromAxisPx,
+      labelOffsetFromTickPx: labelOffsetFromTickPx,
+      minimumPaddingBetweenLabelsPx: minimumPaddingBetweenLabelsPx);
+  @override
+  void drawLabel(charts.ChartCanvas canvas, Tick<D> tick,
+      {@required AxisOrientation orientation,
+        @required Rectangle<int> axisBounds,
+        @required Rectangle<int> drawAreaBounds}) {
+    print("drawLabel");
+  }
+
+  @override
+  ViewMeasuredSizes measureHorizontallyDrawnTicks(List<Tick> ticks, int maxWidth, int maxHeight) {
+    return new ViewMeasuredSizes(preferredWidth: 1, preferredHeight: 0);
+  }
+
+  @override
+  ViewMeasuredSizes measureVerticallyDrawnTicks(List<Tick> ticks, int maxWidth, int maxHeight) {
+    return new ViewMeasuredSizes(preferredWidth: 1, preferredHeight: 0);
+  }
+
+}
 
 class ChartPoint {
   final int pos;
