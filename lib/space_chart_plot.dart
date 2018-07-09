@@ -4,12 +4,13 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:charts_common/src/data/series.dart' show TypedAccessorFn;
-import 'package:charts_common/src/chart/cartesian/axis/draw_strategy/gridline_draw_strategy.dart';
 import 'package:charts_common/src/chart/cartesian/axis/draw_strategy/tick_draw_strategy.dart';
 import 'package:charts_common/src/common/graphics_factory.dart';
 import 'package:charts_common/src/chart/cartesian/axis/axis.dart';
 import 'package:charts_common/src/chart/cartesian/axis/tick.dart';
 import 'package:charts_common/src/chart/cartesian/axis/spec/axis_spec.dart';
+import 'package:charts_common/src/common/line_style.dart';
+import 'package:charts_common/common.dart' as common show MarginSpec;
 
 import 'my_line_chart.dart';
 import 'my_line_renderer.dart';
@@ -22,6 +23,12 @@ import 'protobuf/monitor.pb.dart';
 typedef bool MissingValue(ChartPoint p);
 typedef num GetChartValue(Sample p);
 
+class ChartPoint {
+  final int pos;
+  final Sample smp;
+
+  ChartPoint(this.pos, this.smp);
+}
 
 class SpacePlotWidget extends StatelessWidget {
   static const SERIES_VALUE = "value";
@@ -36,9 +43,10 @@ class SpacePlotWidget extends StatelessWidget {
   final Guidis g;
   final SpaceChartState state;
   final PlotType plotType;
+  final List<charts.SelectionModelConfig<num>> selectionModels;
 
   /// Creates a [LineChart] with sample data and no transition.
-  factory SpacePlotWidget.withData(Guidis g, {SpaceChartState state, PlotType plotType}) {
+  factory SpacePlotWidget.withData(Guidis g, {SpaceChartState state, PlotType plotType, List<charts.SelectionModelConfig<num>> selectionModels}) {
     var plotTyp = plotType ?? PlotType.mv;
     var spaceChartState = state ?? new SpaceChartState();
     return new SpacePlotWidget._internal(
@@ -47,6 +55,7 @@ class SpacePlotWidget extends StatelessWidget {
       spaceChartState,
       plotTyp,
       animate: true,
+      selectionModels: selectionModels,
     );
   }
 
@@ -55,7 +64,8 @@ class SpacePlotWidget extends StatelessWidget {
       this.seriesList,
       this.state,
       this.plotType,
-      {this.animate});
+      {this.animate,
+      this.selectionModels});
 
   static List<charts.Series<ChartPoint, int>> _createData(Guidis g, SpaceChartState state, PlotType plotType) {
     int i = 0;
@@ -163,17 +173,6 @@ class SpacePlotWidget extends StatelessWidget {
         series.add(_getALSeries(samples, idxLal));
       }
     }
-    return series;
-  }
-
-  static charts.Series<ChartPoint, int> _getValueSeries(List<ChartPoint> samples, PlotType plotType) {
-    var series = new charts.Series<ChartPoint, int>(
-      id: SERIES_SPEC + "USL",
-      colorFn: (_, __) => charts.Color(r: 255, g: 78, b: 0),
-      domainFn: (ChartPoint p, x) => x,
-      measureFn: (ChartPoint p, _) => getSpecValue(p.smp, 0),
-      data: samples,
-    );
     return series;
   }
 
@@ -376,27 +375,18 @@ class SpacePlotWidget extends StatelessWidget {
               customRendererId: 'value'),
         ],
 
-        /// This is an OrdinalAxisSpec to match up with BarChart's default
-        /// ordinal domain axis (use NumericAxisSpec or DateTimeAxisSpec for
-        /// other charts).
         domainAxis: new charts.NumericAxisSpec(
-          // Make sure that we draw the domain axis line.
             showAxisLine: false,
-//            renderSpec: new MyRendererSpec(),
-            renderSpec: new GridlineNoLabelRendererSpec(//charts.GridlineRendererSpec(
-              // Tick and Label styling here.
-//                labelStyle: new charts.TextStyleSpec(
-//                    fontSize: 18, // size in Pts.
-//                    color: charts.MaterialPalette.black),
-
-                // Change the line colors to match text color.
-                lineStyle: new charts.LineStyleSpec(
-                    color: charts.MaterialPalette.black)),
-//         But don't draw anything else.
-//            renderSpec: charts.NoneRenderSpec(
+            renderSpec: new MyRendererSpec(),
         ),
 
-        layoutConfig: new charts.LayoutConfig(),
+        layoutConfig: new charts.LayoutConfig(
+          topMarginSpec: new common.MarginSpec.fixedPixel(2),
+          bottomMarginSpec: new common.MarginSpec.fixedPixel(2),
+          leftMarginSpec: new common.MarginSpec.fixedPixel(1),
+          rightMarginSpec: new common.MarginSpec.fixedPixel(1),
+        ),
+        selectionModels: selectionModels,
       )
   );
 //    );
@@ -406,10 +396,17 @@ class SpacePlotWidget extends StatelessWidget {
 class MyRendererSpec<D> implements RenderSpec<D> {
   @override
   TickDrawStrategy<D> createDrawStrategy(charts.ChartContext context, GraphicsFactory graphicFactory) {
+    return new MyTickDrawStrategy._internal(graphicFactory);
   }
 }
 
 class MyTickDrawStrategy<D> extends TickDrawStrategy<D> {
+  LineStyle lineStyle;
+
+  MyTickDrawStrategy._internal(GraphicsFactory graphicFactory) {
+    lineStyle = charts.StyleFactory.style.createGridlineStyle(graphicFactory, null);
+  }
+
   @override
   CollisionReport collides(List<Tick> ticks, AxisOrientation orientation) {
     return new CollisionReport(ticksCollide: false, ticks: ticks, alternateTicksUsed: false);
@@ -422,17 +419,16 @@ class MyTickDrawStrategy<D> extends TickDrawStrategy<D> {
 
   @override
   void draw(charts.ChartCanvas canvas, Tick tick, {AxisOrientation orientation, Rectangle<int> axisBounds, Rectangle<int> drawAreaBounds}) {
-    LineStyleSpec lineStyle = new LineStyleSpec(color: charts.MaterialPalette.black.lighter, thickness: 1);
     Point<num> lineStart;
     Point<num> lineEnd;
     final x = tick.locationPx;
-    lineStart = new Point(x, drawAreaBounds.bottom);
+    lineStart = new Point(x, drawAreaBounds.top);
     lineEnd = new Point(x, axisBounds.top);
     canvas.drawLine(
       points: [lineStart, lineEnd],
       fill: lineStyle.color,
       stroke: lineStyle.color,
-      strokeWidthPx: lineStyle.thickness.toDouble(),
+      strokeWidthPx: lineStyle.strokeWidth.toDouble(),
     );
   }
 
@@ -452,111 +448,3 @@ class MyTickDrawStrategy<D> extends TickDrawStrategy<D> {
   }
 
 }
-@immutable
-class GridlineNoLabelRendererSpec<D> extends charts.SmallTickRendererSpec<D> {
-  GridlineNoLabelRendererSpec({
-    charts.TextStyleSpec labelStyle,
-    charts.LineStyleSpec lineStyle,
-    charts.LineStyleSpec axisLineStyle,
-    charts.TickLabelAnchor labelAnchor,
-    charts.TickLabelJustification labelJustification,
-    int tickLengthPx,
-    int labelOffsetFromAxisPx,
-    int labelOffsetFromTickPx,
-    int minimumPaddingBetweenLabelsPx,
-  }) : super(
-      labelStyle: labelStyle,
-      lineStyle: lineStyle,
-      labelAnchor: labelAnchor,
-      labelJustification: labelJustification,
-      labelOffsetFromAxisPx: labelOffsetFromAxisPx,
-      labelOffsetFromTickPx: labelOffsetFromTickPx,
-      minimumPaddingBetweenLabelsPx: minimumPaddingBetweenLabelsPx,
-      tickLengthPx: tickLengthPx,
-      axisLineStyle: axisLineStyle);
-
-  @override
-  TickDrawStrategy<D> createDrawStrategy(
-      charts.ChartContext chartContext, GraphicsFactory graphicsFactory) =>
-      new GridlineNoLabelTickDrawStrategy<D>(chartContext, graphicsFactory,
-          tickLengthPx: tickLengthPx,
-          lineStyleSpec: lineStyle,
-          labelStyleSpec: labelStyle,
-          axisLineStyleSpec: axisLineStyle,
-          labelAnchor: labelAnchor,
-          labelJustification: labelJustification,
-          labelOffsetFromAxisPx: labelOffsetFromAxisPx,
-          labelOffsetFromTickPx: labelOffsetFromTickPx,
-          minimumPaddingBetweenLabelsPx: minimumPaddingBetweenLabelsPx);
-
-  @override
-  ViewMeasuredSizes measureHorizontallyDrawnTicks(List<Tick> ticks, int maxWidth, int maxHeight) {
-    return new ViewMeasuredSizes(preferredWidth: 0, preferredHeight: 0);
-  }
-
-  @override
-  ViewMeasuredSizes measureVerticallyDrawnTicks(List<Tick> ticks, int maxWidth, int maxHeight) {
-    return new ViewMeasuredSizes(preferredWidth: 0, preferredHeight: 0);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is GridlineRendererSpec && super == (other);
-  }
-
-  @override
-  int get hashCode {
-    int hashcode = super.hashCode;
-    return hashcode;
-  }
-}
-
-
-class GridlineNoLabelTickDrawStrategy<D> extends GridlineTickDrawStrategy<D> {
-  GridlineNoLabelTickDrawStrategy(
-      charts.ChartContext chartContext,
-      GraphicsFactory graphicsFactory, {
-        int tickLengthPx,
-        charts.LineStyleSpec lineStyleSpec,
-        charts.TextStyleSpec labelStyleSpec,
-        charts.LineStyleSpec axisLineStyleSpec,
-        charts.TickLabelAnchor labelAnchor,
-        charts.TickLabelJustification labelJustification,
-        int labelOffsetFromAxisPx,
-        int labelOffsetFromTickPx,
-        int minimumPaddingBetweenLabelsPx,
-      }) : super(chartContext, graphicsFactory,
-      labelStyleSpec: labelStyleSpec,
-      axisLineStyleSpec: axisLineStyleSpec ?? lineStyleSpec,
-      labelAnchor: labelAnchor,
-      labelJustification: labelJustification,
-      labelOffsetFromAxisPx: labelOffsetFromAxisPx,
-      labelOffsetFromTickPx: labelOffsetFromTickPx,
-      minimumPaddingBetweenLabelsPx: minimumPaddingBetweenLabelsPx);
-  @override
-  void drawLabel(charts.ChartCanvas canvas, Tick<D> tick,
-      {@required AxisOrientation orientation,
-        @required Rectangle<int> axisBounds,
-        @required Rectangle<int> drawAreaBounds}) {
-    print("drawLabel");
-  }
-
-  @override
-  ViewMeasuredSizes measureHorizontallyDrawnTicks(List<Tick> ticks, int maxWidth, int maxHeight) {
-    return new ViewMeasuredSizes(preferredWidth: 1, preferredHeight: 0);
-  }
-
-  @override
-  ViewMeasuredSizes measureVerticallyDrawnTicks(List<Tick> ticks, int maxWidth, int maxHeight) {
-    return new ViewMeasuredSizes(preferredWidth: 1, preferredHeight: 0);
-  }
-
-}
-
-class ChartPoint {
-  final int pos;
-  final Sample smp;
-
-  ChartPoint(this.pos, this.smp);
-}
-
