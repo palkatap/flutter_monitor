@@ -1,4 +1,4 @@
-package com.yourcompany.fluttermonitor;
+package com.palkatap.monitor.flutter;
 
 import android.os.Bundle;
 
