@@ -35,10 +35,10 @@ class SpaceChartWidget extends StatefulWidget {
       ..chartTypeId = CHART_TYPE_EWMA_S
       ..displayRule = DISPLAY_RULE_ALWAYS);
 
-    state.showSpec = false;
-    state.showCl = false;
-    state.showAl = false;
-    state.showZones = false;
+    state.showSpec = true;
+    state.showCl = true;
+    state.showAl = true;
+    state.showZones = true;
 
     state.scaleBySpec = false;
 

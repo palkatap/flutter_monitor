@@ -11,6 +11,7 @@ dependencies:
   fixnum: ^0.10.5
   protobuf: ^0.8.0
   charts_flutter: ^0.3.0
+  cloud_firestore: ^0.7.3
 
 dev_dependencies:
   flutter_test:

@@ -353,7 +353,10 @@ class SpacePlotWidget extends StatelessWidget {
         animate: animate,
         behaviors: [
           new charts.SelectNearest(),
-          new MyLinePointHighlighter()
+          new MyLinePointHighlighter(),
+          new charts.InitialSelection(selectedDataConfig: [
+            new charts.SeriesDatumConfig<num>(SERIES_VALUE, 5)
+          ])
         ],
         defaultInteractions: false,
         defaultRenderer: new MyLineRendererConfig(

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'space_chart.dart';
@@ -19,11 +20,6 @@ void main() async {
   runApp(new MyApp(g));
 }
 
-//ByteData getAsset(String assetKey) {
-//  final Future<ByteData> future = rootBundle.load(assetKey);
-//  final data = (await future);
-//  return data;
-//}
 
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
@@ -46,7 +42,35 @@ class MyApp extends StatelessWidget {
         // counter didn't reset back to zero; the application is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: new MyHomePage(g, title: 'Monitor Demo Home Page'),
+//      home: new MyHomePage(g, title: 'Monitor Demo Home Page'),
+      home: const MyHomePageFire(title: 'Monitor Firebase'),
+    );
+  }
+}
+
+class MyHomePageFire extends StatelessWidget {
+  const MyHomePageFire({Key key, this.title}) : super(key: key);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return new Scaffold(
+      appBar: new AppBar(title: new Text(title)),
+      body: new StreamBuilder(
+          stream: Firestore.instance.collection('fluttermon').snapshots(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) return const Text('Loading...');
+            return new ListView.builder(
+                itemCount: snapshot.data.documents.length,
+                padding: const EdgeInsets.only(top: 10.0),
+                itemExtent: 25.0,
+                itemBuilder: (context, index) {
+                  DocumentSnapshot ds = snapshot.data.documents[index];
+                  return new Text(" ${ds['ch_id']} ${ds['ckc_id']}");
+                }
+            );
+          }),
     );
   }
 }
